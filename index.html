@@ -1,0 +1,1377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f4f1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="ScannaLite">
+<meta name="description" content="ScannaLite — point at a document. It auto-captures, straightens, cleans it up and gives you a PDF. No install.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>ScannaLite — point, snap, PDF</title>
+<style>
+  :root{
+    --bg:#f5f4f1; --panel:#ffffff; --line:#e3e0d9; --line-soft:#edeae4;
+    --text:#151515; --muted:#7b786f;
+    --r:20px;
+    --safe-b: env(safe-area-inset-bottom, 0px);
+    --safe-t: env(safe-area-inset-top, 0px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--text);overflow:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none;
+  }
+  button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+  .screen{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg)}
+  .hidden{display:none !important}
+
+  /* ---------- home ---------- */
+  .bar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:calc(16px + var(--safe-t)) 20px 8px;flex:0 0 auto;
+  }
+  .brand{
+    display:flex;align-items:center;gap:9px;font-weight:600;font-size:21px;letter-spacing:-.4px;
+    font-family:ui-serif,"New York",Georgia,"Times New Roman",serif;
+  }
+  .brand .dot{width:8px;height:8px;border-radius:2px;background:var(--text)}
+  .icon-btn{
+    width:34px;height:34px;border-radius:50%;background:var(--panel);border:1px solid var(--line);
+    display:grid;place-items:center;color:var(--muted);font-size:14px;
+  }
+  .home-main{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 20px 16px}
+  .empty{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+    padding:20px 18px;margin-top:6px;box-shadow:0 1px 2px rgba(20,20,20,.03);
+  }
+  .steps{list-style:none;margin:0;padding:0;display:grid;gap:16px}
+  .steps li{display:flex;gap:13px;align-items:flex-start}
+  .steps b{display:block;font-size:15px;font-weight:600;margin-bottom:3px;letter-spacing:-.1px}
+  .steps li > div > span{display:block;color:var(--muted);font-size:13px;line-height:1.5}
+  .num{
+    flex:0 0 26px;width:26px;height:26px;border-radius:50%;border:1px solid var(--line);
+    background:var(--bg);color:var(--text);display:grid;place-items:center;
+    font-size:12.5px;font-weight:600;
+  }
+  .pages-head{display:flex;align-items:center;justify-content:space-between;margin:10px 2px 12px}
+  .pages-head .count{font-size:13px;color:var(--muted);letter-spacing:.1px}
+  .link{
+    color:var(--muted);font-size:13px;padding:4px 2px;text-decoration:underline;
+    text-underline-offset:3px;text-decoration-color:var(--line);
+  }
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .thumb{
+    position:relative;border-radius:14px;overflow:hidden;background:var(--panel);
+    border:1px solid var(--line);aspect-ratio:3/4;
+  }
+  .thumb img{width:100%;height:100%;object-fit:contain;background:#fff;display:block}
+  .thumb .badge{
+    position:absolute;left:7px;bottom:7px;background:#ffffffe6;border:1px solid var(--line);
+    color:var(--text);font-size:11px;padding:2px 7px;border-radius:7px;
+  }
+  .thumb .x{
+    position:absolute;top:6px;right:6px;width:25px;height:25px;border-radius:50%;
+    background:#fffffff2;border:1px solid var(--line);display:grid;place-items:center;
+    font-size:11px;color:var(--text);
+  }
+
+  .dock{
+    flex:0 0 auto;padding:12px 20px calc(14px + var(--safe-b));
+    background:var(--bg);border-top:1px solid var(--line-soft);display:grid;gap:10px;
+  }
+  .filter-row{display:flex;gap:7px;align-items:center}
+  .filter-row .label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-right:3px}
+  .chip{
+    font-size:12.5px;padding:7px 12px;border-radius:999px;background:transparent;
+    border:1px solid var(--line);color:var(--muted);white-space:nowrap;transition:.15s ease;
+  }
+  .chip.active{background:var(--text);border-color:var(--text);color:#fff}
+  .btn{
+    display:flex;align-items:center;justify-content:center;gap:9px;
+    height:52px;border-radius:16px;font-weight:600;font-size:16px;letter-spacing:-.1px;
+    transition:transform .08s ease,opacity .15s ease;
+  }
+  .btn:active{transform:scale(.985)}
+  .btn.primary{background:var(--text);color:#fff}
+  .btn.primary.big{height:58px;font-size:17px;border-radius:18px}
+  .btn.accent{background:var(--text);color:#fff}
+  .btn.ghost{background:transparent;border:1px solid var(--text);color:var(--text);height:46px;font-size:15px}
+  .btn:disabled{opacity:1;background:transparent;border:1px solid var(--line);color:var(--muted)}
+  .row2{display:grid;grid-template-columns:1fr 1.25fr;gap:10px}
+  .hint{font-size:11.5px;color:var(--muted);text-align:center;line-height:1.4}
+
+  /* ---------- camera ---------- */
+  .camera{background:#000}
+  #video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+  #overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  .cam-top{
+    position:absolute;top:0;left:0;right:0;padding:calc(12px + var(--safe-t)) 16px 0;
+    display:flex;align-items:center;justify-content:space-between;gap:10px;z-index:3;
+  }
+  .round{
+    width:42px;height:42px;border-radius:50%;background:#00000080;border:1px solid #ffffff2e;
+    backdrop-filter:blur(10px);display:grid;place-items:center;font-size:14px;color:#fff;
+  }
+  .round.toggle{width:52px;height:36px;border-radius:12px;font-size:9.5px;font-weight:700;letter-spacing:.8px;color:#ffffffb3}
+  .round.toggle.on{background:#fff;border-color:#fff;color:#111}
+  .status-wrap{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+  .status{
+    background:#000000a6;backdrop-filter:blur(10px);border:1px solid #ffffff1f;border-radius:999px;
+    padding:7px 14px;font-size:12px;color:#f2f2f2;white-space:nowrap;overflow:hidden;
+    text-overflow:ellipsis;max-width:100%;letter-spacing:.1px;
+  }
+  .auto-bar{width:110px;height:2px;border-radius:2px;background:#ffffff30;overflow:hidden}
+  .auto-bar i{display:block;height:100%;width:0%;background:#ffffff;border-radius:2px;transition:width .1s linear}
+  .cam-bottom{
+    position:absolute;left:0;right:0;bottom:0;padding:10px 16px calc(16px + var(--safe-b));
+    background:linear-gradient(0deg,#000000cc,#00000000);z-index:3;
+  }
+  .thumbs{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 12px;scrollbar-width:none}
+  .thumbs::-webkit-scrollbar{display:none}
+  .thumbs img{width:34px;height:44px;object-fit:cover;border-radius:6px;border:1px solid #ffffff33;flex:0 0 auto}
+  .shutter-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .shutter{
+    width:74px;height:74px;border-radius:50%;border:2.5px solid #ffffff;display:grid;place-items:center;
+    background:transparent;flex:0 0 auto;
+  }
+  .shutter span{width:58px;height:58px;border-radius:50%;background:#fff;display:block;transition:transform .09s}
+  .shutter:active span{transform:scale(.9)}
+  .shutter.disabled{opacity:.35}
+  .flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:4}
+  .flash.go{animation:fl .42s ease-out}
+  @keyframes fl{0%{opacity:.82}100%{opacity:0}}
+  .camera .btn.accent{background:#fff;color:#111}
+  .busy{
+    position:absolute;inset:0;z-index:6;display:grid;place-items:center;background:#000000a8;
+    backdrop-filter:blur(3px);
+  }
+  .busy .card{
+    display:flex;align-items:center;gap:11px;background:#121212;border:1px solid #ffffff24;
+    padding:14px 18px;border-radius:14px;font-size:13.5px;color:#f4f4f4;
+  }
+  .spin{width:16px;height:16px;border-radius:50%;border:2px solid #ffffff2b;border-top-color:#fff;animation:sp .8s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  /* ---------- toast / viewer ---------- */
+  .toast{
+    position:fixed;left:50%;bottom:calc(100px + var(--safe-b));transform:translate(-50%,14px);
+    background:#151515;color:#fff;padding:11px 18px;border-radius:999px;font-size:13px;
+    z-index:40;opacity:0;pointer-events:none;transition:.22s ease;max-width:86vw;text-align:center;
+    box-shadow:0 12px 30px rgba(0,0,0,.16);
+  }
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  .viewer{
+    position:fixed;inset:0;background:#f5f4f1f2;z-index:50;display:flex;flex-direction:column;
+    padding:calc(14px + var(--safe-t)) 14px calc(14px + var(--safe-b));backdrop-filter:blur(8px);
+  }
+  .viewer img{
+    flex:1 1 auto;min-height:0;object-fit:contain;border-radius:12px;background:#fff;
+    border:1px solid var(--line);
+  }
+  .viewer-bar{display:flex;gap:10px;padding-top:12px}
+  .viewer-bar .btn{height:46px;flex:1;font-size:15px}
+  .viewer-bar .del{background:transparent;border:1px solid var(--text);color:var(--text)}
+
+  /* ---------- error panel ---------- */
+  .err{
+    position:fixed;inset:0;z-index:60;background:var(--bg);
+    padding:calc(28px + var(--safe-t)) 22px calc(28px + var(--safe-b));
+    display:flex;flex-direction:column;justify-content:center;gap:14px;
+  }
+  .err h2{
+    margin:0;font-size:23px;letter-spacing:-.4px;font-weight:600;
+    font-family:ui-serif,"New York",Georgia,serif;
+  }
+  .err p{margin:0;color:var(--muted);font-size:14px;line-height:1.55}
+  .err code{background:#fff;border:1px solid var(--line);padding:2px 6px;border-radius:6px;font-size:12.5px;color:var(--text)}
+</style>
+</head>
+<body>
+
+<!-- ============ HOME ============ -->
+<section id="home" class="screen">
+  <header class="bar">
+    <div class="brand"><span class="dot"></span>ScannaLite</div>
+    <button id="helpBtn" class="icon-btn" aria-label="How it works">?</button>
+  </header>
+
+  <main class="home-main">
+    <div id="emptyState" class="empty">
+      <ul class="steps">
+        <li><span class="num">1</span><div><b>Point at the document</b><span>It finds the page edges and auto-captures when steady — no shutter tap needed.</span></div></li>
+        <li><span class="num">2</span><div><b>Straightens &amp; cleans it up</b><span>Perspective is corrected and the page gets a crisp scan look. Add as many pages as you like.</span></div></li>
+        <li><span class="num">3</span><div><b>Tap Done → PDF</b><span>The PDF opens straight into the iPhone share sheet: AirDrop, Mail, Files, Messages.</span></div></li>
+      </ul>
+    </div>
+
+    <div id="pagesWrap" class="hidden">
+      <div class="pages-head">
+        <span id="pagesCount" class="count">0 pages</span>
+        <button id="clearBtn" class="link">Clear all</button>
+      </div>
+      <div id="grid" class="grid"></div>
+    </div>
+  </main>
+
+  <footer class="dock">
+    <div class="filter-row">
+      <span class="label">Looks</span>
+      <button class="chip active" data-filter="bw">B&amp;W</button>
+      <button class="chip" data-filter="gray">Gray</button>
+      <button class="chip" data-filter="color">Color</button>
+    </div>
+    <button id="scanBtn" class="btn primary big">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M3 8V6a3 3 0 0 1 3-3h2M16 3h2a3 3 0 0 1 3 3v2M21 16v2a3 3 0 0 1-3 3h-2M8 21H6a3 3 0 0 1-3-3v-2"/>
+        <circle cx="12" cy="12" r="3.2"/>
+      </svg>
+      Scan document
+    </button>
+    <div class="row2">
+      <button id="photosBtn" class="btn ghost">Add photos</button>
+      <button id="pdfBtn" class="btn accent" disabled>Save PDF</button>
+    </div>
+    <div class="hint">Auto-capture is on · straighten + clean-up automatic</div>
+  </footer>
+</section>
+
+<!-- ============ CAMERA ============ -->
+<section id="camera" class="screen camera hidden">
+  <video id="video" playsinline autoplay muted></video>
+  <canvas id="overlay"></canvas>
+
+  <div class="cam-top">
+    <button id="closeCam" class="round" aria-label="Close">✕</button>
+    <div class="status-wrap">
+      <div id="camStatus" class="status">Starting camera…</div>
+      <div class="auto-bar"><i id="autoBar"></i></div>
+    </div>
+    <button id="torchBtn" class="round hidden" aria-label="Light">☀</button>
+  </div>
+
+  <div class="cam-bottom">
+    <div id="thumbs" class="thumbs"></div>
+    <div class="shutter-row">
+      <button id="doneBtn" class="btn accent small" style="width:88px;height:44px;border-radius:14px;font-size:14.5px">Done</button>
+      <button id="shutter" class="shutter" aria-label="Capture"><span></span></button>
+      <button id="autoBtn" class="round toggle on" aria-label="Auto capture">AUTO</button>
+    </div>
+  </div>
+
+  <div id="flash" class="flash"></div>
+  <div id="busy" class="busy hidden"><div class="card"><span class="spin"></span><span id="busyText">Cleaning up page…</span></div></div>
+</section>
+
+<!-- ============ VIEWER ============ -->
+<div id="viewer" class="viewer hidden">
+  <img id="viewerImg" alt="Scanned page">
+  <div class="viewer-bar">
+    <button id="viewerDel" class="btn del">Delete</button>
+    <button id="viewerClose" class="btn ghost">Close</button>
+  </div>
+</div>
+
+<!-- ============ CAMERA ERROR ============ -->
+<div id="camErr" class="err hidden">
+  <h2>Camera unavailable</h2>
+  <p id="camErrMsg">This browser blocked camera access.</p>
+  <p>Two easy fixes: open this page over <code>https://</code> (camera needs a secure URL), or let the iPhone's own camera app take the photo instead — it still gets auto-cropped and scanned.</p>
+  <button id="errUseCamera" class="btn primary">Use the iPhone camera app</button>
+  <button id="errUsePhotos" class="btn ghost">Choose a photo instead</button>
+  <button id="errClose" class="link" style="align-self:center">Back</button>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<input id="fileInput" type="file" accept="image/*" multiple hidden>
+<input id="cameraInput" type="file" accept="image/*" capture="environment" hidden>
+
+<script>
+(() => {
+'use strict';
+
+/* =====================================================================
+   ScannaLite — zero-install document scanner
+   Auto edge-detect → perspective warp → scan cleanup → multi-page PDF
+   Everything runs locally in the browser. Nothing is uploaded anywhere.
+   ===================================================================== */
+
+const $ = (s, r = document) => r.querySelector(s);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+
+const els = {
+  home: $('#home'), camera: $('#camera'),
+  video: $('#video'), overlay: $('#overlay'),
+  camStatus: $('#camStatus'), autoBar: $('#autoBar'),
+  shutter: $('#shutter'), doneBtn: $('#doneBtn'), autoBtn: $('#autoBtn'),
+  closeCam: $('#closeCam'), torchBtn: $('#torchBtn'),
+  thumbs: $('#thumbs'), busy: $('#busy'), busyText: $('#busyText'),
+  flash: $('#flash'), grid: $('#grid'), pagesWrap: $('#pagesWrap'),
+  pagesCount: $('#pagesCount'), emptyState: $('#emptyState'), pdfBtn: $('#pdfBtn'),
+  clearBtn: $('#clearBtn'), scanBtn: $('#scanBtn'), photosBtn: $('#photosBtn'),
+  fileInput: $('#fileInput'), cameraInput: $('#cameraInput'),
+  viewer: $('#viewer'), viewerImg: $('#viewerImg'),
+  viewerDel: $('#viewerDel'), viewerClose: $('#viewerClose'),
+  camErr: $('#camErr'), camErrMsg: $('#camErrMsg'),
+  errUseCamera: $('#errUseCamera'), errUsePhotos: $('#errUsePhotos'), errClose: $('#errClose'),
+  toast: $('#toast'), helpBtn: $('#helpBtn')
+};
+
+const state = {
+  pages: [],          // {id, seq, b64, w, h}
+  filter: 'bw',
+  auto: true,
+  maxSide: 1700,      // long side of a stored page (px)
+  running: false,
+  busy: false,
+  stream: null,
+  track: null,
+  quad: null,         // smoothed quad, normalised 0..1 of the video frame
+  lastCaptureQuad: null,
+  stableMs: 0,
+  cooldown: 0,
+  lastDetect: 0,
+  prevTs: 0,
+  torchOn: false,
+  viewing: null,
+  seq: 0,
+  raf: 0
+};
+
+/* ------------------------------ storage ------------------------------ */
+const DB = {
+  db: null,
+  open() {
+    if (this.db) return Promise.resolve(this.db);
+    return new Promise((res, rej) => {
+      if (!('indexedDB' in window)) return rej(new Error('no idb'));
+      const req = indexedDB.open('scannalite', 1);
+      req.onupgradeneeded = () => { req.result.createObjectStore('pages', { keyPath: 'id' }); };
+      req.onsuccess = () => { this.db = req.result; res(this.db); };
+      req.onerror = () => rej(req.error);
+    });
+  },
+  all() {
+    return this.open().then(db => new Promise((res, rej) => {
+      const q = db.transaction('pages', 'readonly').objectStore('pages').getAll();
+      q.onsuccess = () => res(q.result || []);
+      q.onerror = () => rej(q.error);
+    })).catch(() => []);
+  },
+  put(page) {
+    return this.open().then(db => new Promise((res, rej) => {
+      const tx = db.transaction('pages', 'readwrite');
+      tx.objectStore('pages').put(page);
+      tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+    })).catch(() => {});
+  },
+  del(id) {
+    return this.open().then(db => new Promise((res, rej) => {
+      const tx = db.transaction('pages', 'readwrite');
+      tx.objectStore('pages').delete(id);
+      tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+    })).catch(() => {});
+  },
+  clear() {
+    return this.open().then(db => new Promise((res, rej) => {
+      const tx = db.transaction('pages', 'readwrite');
+      tx.objectStore('pages').clear();
+      tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+    })).catch(() => {});
+  }
+};
+
+/* ------------------------------ helpers ------------------------------ */
+let toastTimer = 0;
+function toast(msg, ms = 2200) {
+  els.toast.textContent = msg;
+  els.toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => els.toast.classList.remove('show'), ms);
+}
+function vibrate(p) { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} }
+let audioCtx = null;
+function beep() {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = 'sine'; o.frequency.value = 1180;
+    g.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.06, audioCtx.currentTime + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.13);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + 0.14);
+  } catch (e) {}
+}
+const nextFrame = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+/* ------------------------- document detection ------------------------- */
+const lowCanvas = document.createElement('canvas');
+const lowCtx = lowCanvas.getContext('2d', { willReadFrequently: true });
+
+function otsu(hist, total) {
+  let sum = 0;
+  for (let i = 0; i < 256; i++) sum += i * hist[i];
+  let sumB = 0, wB = 0, best = -1, thr = 127;
+  for (let i = 0; i < 256; i++) {
+    wB += hist[i];
+    if (!wB) continue;
+    const wF = total - wB;
+    if (!wF) break;
+    sumB += i * hist[i];
+    const mB = sumB / wB, mF = (sum - sumB) / wF;
+    const v = wB * wF * (mB - mF) * (mB - mF);
+    if (v > best) { best = v; thr = i; }
+  }
+  return thr;
+}
+
+function expandQuad(quad, amount) {
+  const cx = (quad[0][0] + quad[1][0] + quad[2][0] + quad[3][0]) / 4;
+  const cy = (quad[0][1] + quad[1][1] + quad[2][1] + quad[3][1]) / 4;
+  return quad.map(p => {
+    const dx = p[0] - cx, dy = p[1] - cy;
+    const l = Math.hypot(dx, dy) || 1;
+    return [clamp(p[0] + dx / l * amount, 0, 1), clamp(p[1] + dy / l * amount, 0, 1)];
+  });
+}
+
+/**
+ * Finds the document quad in any drawable source.
+ * @returns {{quad:number[][], sharp:number, frac:number}|null}
+ */
+/** Flood-fills the brightest blobs at one threshold and keeps the best page-like one. */
+function scanForPage(gray, W, H, T) {
+  const n = W * H;
+  const mask = new Uint8Array(n);
+  for (let i = 0; i < n; i++) mask[i] = gray[i] > T ? 1 : 0;
+
+  const seen = new Uint8Array(n);
+  const stack = new Int32Array(n);
+  let best = null, bestSize = 0;
+
+  for (let start = 0; start < n; start++) {
+    if (!mask[start] || seen[start]) continue;
+    let sp = 0; stack[sp++] = start; seen[start] = 1;
+    let size = 0, minX = 1e9, minY = 1e9, maxX = -1, maxY = -1;
+    let pTL = null, pTR = null, pBR = null, pBL = null;
+    let vTL = 1e9, vTR = -1e9, vBR = -1e9, vBL = 1e9;
+    while (sp > 0) {
+      const idx = stack[--sp];
+      const x = idx % W, y = (idx / W) | 0;
+      size++;
+      if (x < minX) minX = x; if (x > maxX) maxX = x;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
+      const s1 = x + y, s2 = x - y;
+      if (s1 < vTL) { vTL = s1; pTL = [x, y]; }
+      if (s2 > vTR) { vTR = s2; pTR = [x, y]; }
+      if (s1 > vBR) { vBR = s1; pBR = [x, y]; }
+      if (s2 < vBL) { vBL = s2; pBL = [x, y]; }
+      if (x > 0 && mask[idx - 1] && !seen[idx - 1]) { seen[idx - 1] = 1; stack[sp++] = idx - 1; }
+      if (x < W - 1 && mask[idx + 1] && !seen[idx + 1]) { seen[idx + 1] = 1; stack[sp++] = idx + 1; }
+      if (y > 0 && mask[idx - W] && !seen[idx - W]) { seen[idx - W] = 1; stack[sp++] = idx - W; }
+      if (y < H - 1 && mask[idx + W] && !seen[idx + W]) { seen[idx + W] = 1; stack[sp++] = idx + W; }
+    }
+    if (size > bestSize) { bestSize = size; best = { size, minX, minY, maxX, maxY, pTL, pTR, pBR, pBL }; }
+  }
+  if (!best) return null;
+
+  const bw = best.maxX - best.minX + 1, bh = best.maxY - best.minY + 1;
+  const frac = (bw * bh) / n;
+  if (frac < 0.10 || frac > 0.96) return null;          // too small, or swallowed the whole frame
+  if (best.size / (bw * bh) < 0.5) return null;         // ragged blob, not a page
+
+  const quad = [best.pTL, best.pTR, best.pBR, best.pBL].map(p => [p[0] / W, p[1] / H]);
+  const sides = [
+    dist(quad[0], quad[1]), dist(quad[1], quad[2]),
+    dist(quad[2], quad[3]), dist(quad[3], quad[0])
+  ];
+  if (Math.min(...sides) < 0.10) return null;
+  const aspect = (sides[0] + sides[2]) / Math.max(0.001, sides[1] + sides[3]);
+  if (aspect < 0.33 || aspect > 3.1) return null;
+
+  return { best, quad, frac };
+}
+
+function findQuad(source, sw, sh) {
+  try {
+    if (!sw || !sh) return null;
+    const W = 200, H = Math.max(40, Math.round(W * sh / sw));
+    if (lowCanvas.width !== W || lowCanvas.height !== H) { lowCanvas.width = W; lowCanvas.height = H; }
+    lowCtx.clearRect(0, 0, W, H);
+    lowCtx.drawImage(source, 0, 0, W, H);
+    const data = lowCtx.getImageData(0, 0, W, H).data;
+    const n = W * H;
+
+    const gray = new Uint8Array(n);
+    const hist = new Uint32Array(256);
+    for (let i = 0, p = 0; i < n; i++, p += 4) {
+      const g = (data[p] * 77 + data[p + 1] * 150 + data[p + 2] * 29) >> 8;
+      gray[i] = g; hist[g]++;
+    }
+
+    // Paper is nearly always the brightest thing in frame, so try Otsu first and
+    // then walk up towards "pure white" — that separates the page from a textured,
+    // mid-grey or shadowed background instead of merging into it.
+    const tries = [];
+    const addTry = t => {
+      t = Math.round(clamp(t, 96, 250));
+      if (tries.indexOf(t) < 0) tries.push(t);
+    };
+    addTry(Math.max(otsu(hist, n), 108));
+    [245, 228, 211, 194, 177, 160].forEach(addTry);
+
+    for (const T of tries) {
+      const cand = scanForPage(gray, W, H, T);
+      if (!cand) continue;
+
+      const b = cand.best;
+      let bsum = 0, bcount = 0;
+      for (let y = b.minY; y <= b.maxY; y += 2)
+        for (let x = b.minX; x <= b.maxX; x += 2) { bsum += gray[y * W + x]; bcount++; }
+      if (bsum / Math.max(1, bcount) < 118) continue;   // not paper-ish, try the next threshold
+
+      let gsum = 0, gcount = 0;
+      for (let y = b.minY + 1; y < b.maxY; y += 2)
+        for (let x = b.minX + 1; x < b.maxX; x += 2) {
+          const i = y * W + x;
+          gsum += Math.abs(gray[i] - gray[i + 1]) + Math.abs(gray[i] - gray[i + W]);
+          gcount++;
+        }
+
+      const quad = expandQuad(cand.quad, 0.006);
+      // order corners defensively: TL, TR, BR, BL
+      const cx = (quad[0][0] + quad[1][0] + quad[2][0] + quad[3][0]) / 4;
+      const cy = (quad[0][1] + quad[1][1] + quad[2][1] + quad[3][1]) / 4;
+      const sorted = quad.slice().sort((a, b2) => Math.atan2(a[1] - cy, a[0] - cx) - Math.atan2(b2[1] - cy, b2[0] - cx));
+      let idx = 0, bestSum = 1e9;
+      sorted.forEach((p, i) => { const s = p[0] + p[1]; if (s < bestSum) { bestSum = s; idx = i; } });
+      const ordered = [sorted[idx], sorted[(idx + 1) % 4], sorted[(idx + 2) % 4], sorted[(idx + 3) % 4]];
+
+      return { quad: ordered, sharp: gsum / Math.max(1, gcount), frac: cand.frac };
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/* --------------------------- perspective warp --------------------------- */
+function solveHomography(from, to) {
+  const M = [];
+  for (let i = 0; i < 4; i++) {
+    const [u, v] = from[i], [x, y] = to[i];
+    M.push([u, v, 1, 0, 0, 0, -u * x, -v * x, x]);
+    M.push([0, 0, 0, u, v, 1, -u * y, -v * y, y]);
+  }
+  for (let c = 0; c < 8; c++) {
+    let piv = c;
+    for (let r = c + 1; r < 8; r++) if (Math.abs(M[r][c]) > Math.abs(M[piv][c])) piv = r;
+    if (Math.abs(M[piv][c]) < 1e-9) return null;
+    const tmp = M[c]; M[c] = M[piv]; M[piv] = tmp;
+    const pv = M[c][c];
+    for (let k = c; k <= 8; k++) M[c][k] /= pv;
+    for (let r = 0; r < 8; r++) {
+      if (r === c) continue;
+      const f = M[r][c];
+      if (!f) continue;
+      for (let k = c; k <= 8; k++) M[r][k] -= f * M[c][k];
+    }
+  }
+  return M.map(row => row[8]);
+}
+
+/** Warps the quad (normalised) out of `src` into a straightened canvas. */
+function warpCanvas(src, quadN, maxSide) {
+  const sw = src.width, sh = src.height;
+  const quad = quadN.map(p => [p[0] * sw, p[1] * sh]);
+  const [tl, tr, br, bl] = quad;
+
+  let W = Math.round(Math.max(dist(tl, tr), dist(bl, br)));
+  let H = Math.round(Math.max(dist(tl, bl), dist(tr, br)));
+  if (!(W > 8) || !(H > 8)) return null;
+  const s = Math.min(1, maxSide / Math.max(W, H));
+  W = Math.max(16, Math.round(W * s));
+  H = Math.max(16, Math.round(H * s));
+
+  const hm = solveHomography([[0, 0], [W, 0], [W, H], [0, H]], quad);
+  if (!hm) return null;
+
+  const srcData = src.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, sw, sh);
+  const sd = srcData.data;
+  const out = new ImageData(W, H);
+  const od = out.data;
+
+  for (let y = 0; y < H; y++) {
+    const h6y = hm[6] * y, h7y = hm[7] * y;
+    for (let x = 0; x < W; x++) {
+      const den = h6y + h7y + 1;
+      const sx = (hm[0] * x + hm[1] * y + hm[2]) / den;
+      const sy = (hm[3] * x + hm[4] * y + hm[5]) / den;
+      const o = (y * W + x) * 4;
+      if (sx < 0 || sy < 0 || sx >= sw - 1 || sy >= sh - 1) {
+        od[o] = 255; od[o + 1] = 255; od[o + 2] = 255; od[o + 3] = 255;
+        continue;
+      }
+      const x0 = sx | 0, y0 = sy | 0, fx = sx - x0, fy = sy - y0;
+      const i00 = (y0 * sw + x0) * 4, i10 = i00 + 4, i01 = i00 + sw * 4, i11 = i01 + 4;
+      for (let c = 0; c < 3; c++) {
+        const top = sd[i00 + c] + (sd[i10 + c] - sd[i00 + c]) * fx;
+        const bot = sd[i01 + c] + (sd[i11 + c] - sd[i01 + c]) * fx;
+        od[o + c] = top + (bot - top) * fy;
+      }
+      od[o + 3] = 255;
+    }
+  }
+
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  c.getContext('2d').putImageData(out, 0, 0);
+  return c;
+}
+
+/* ------------------------------ clean up ------------------------------ */
+function enhance(canvas, mode) {
+  if (mode === 'color') return canvas;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const w = canvas.width, h = canvas.height, n = w * h;
+  const img = ctx.getImageData(0, 0, w, h);
+  const d = img.data;
+
+  const gray = new Uint8Array(n);
+  const hist = new Uint32Array(256);
+  for (let i = 0, p = 0; i < n; i++, p += 4) {
+    const g = (d[p] * 77 + d[p + 1] * 150 + d[p + 2] * 29) >> 8;
+    gray[i] = g; hist[g]++;
+  }
+
+  // auto-levels: stretch the 2%..98% range to full white/black
+  let lo = 0, hi = 255, acc = 0;
+  const cut = n * 0.02;
+  for (let i = 0; i < 256; i++) { acc += hist[i]; if (acc >= cut) { lo = i; break; } }
+  acc = 0;
+  for (let i = 255; i >= 0; i--) { acc += hist[i]; if (acc >= cut) { hi = i; break; } }
+  if (hi - lo < 40) { lo = 0; hi = 255; }
+  const lut = new Uint8ClampedArray(256);
+  for (let i = 0; i < 256; i++) lut[i] = clamp((i - lo) * 255 / (hi - lo), 0, 255);
+  for (let i = 0; i < n; i++) gray[i] = lut[gray[i]];
+
+  if (mode === 'gray') {
+    for (let i = 0, p = 0; i < n; i++, p += 4) {
+      const v = gray[i]; d[p] = d[p + 1] = d[p + 2] = v;
+    }
+  } else {
+    // adaptive threshold — the classic scanner look, immune to shadows
+    const iw = w + 1;
+    const integ = new Uint32Array(iw * (h + 1));
+    for (let y = 0; y < h; y++) {
+      let row = 0;
+      for (let x = 0; x < w; x++) {
+        row += gray[y * w + x];
+        integ[(y + 1) * iw + (x + 1)] = integ[y * iw + (x + 1)] + row;
+      }
+    }
+    const rad = Math.max(6, Math.round(Math.min(w, h) / 26));
+    for (let y = 0; y < h; y++) {
+      const y1 = Math.max(0, y - rad), y2 = Math.min(h - 1, y + rad);
+      for (let x = 0; x < w; x++) {
+        const x1 = Math.max(0, x - rad), x2 = Math.min(w - 1, x + rad);
+        const cnt = (x2 - x1 + 1) * (y2 - y1 + 1);
+        const sum = integ[(y2 + 1) * iw + (x2 + 1)] - integ[y1 * iw + (x2 + 1)]
+                  - integ[(y2 + 1) * iw + x1] + integ[y1 * iw + x1];
+        const v = gray[y * w + x];
+        const val = v > (sum / cnt) * 0.90 ? 255 : 0;
+        const p = (y * w + x) * 4;
+        d[p] = d[p + 1] = d[p + 2] = val;
+      }
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return canvas;
+}
+
+/* ------------------------------ pages ------------------------------ */
+function uid() { return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+async function commitPage(canvas) {
+  if (!canvas || canvas.width < 120 || canvas.height < 120) return null;
+  const b64 = canvas.toDataURL('image/jpeg', 0.86).split(',')[1];
+  const page = { id: uid(), seq: ++state.seq, b64, w: canvas.width, h: canvas.height, ts: Date.now() };
+  state.pages.push(page);
+  state.pages.sort((a, b) => a.seq - b.seq);
+  DB.put(page);
+  render();
+  renderCamThumbs();
+  return page;
+}
+
+function render() {
+  const n = state.pages.length;
+  els.pagesWrap.classList.toggle('hidden', n === 0);
+  els.emptyState.classList.toggle('hidden', n > 0);
+  els.pagesCount.textContent = n + (n === 1 ? ' page' : ' pages');
+  els.pdfBtn.disabled = n === 0;
+  els.pdfBtn.textContent = n ? `Save PDF · ${n}` : 'Save PDF';
+  els.doneBtn.textContent = n ? `Done (${n})` : 'Done';
+  els.doneBtn.disabled = n === 0;
+
+  const frag = document.createDocumentFragment();
+  state.pages.forEach((p, i) => {
+    const d = document.createElement('div');
+    d.className = 'thumb';
+    const img = document.createElement('img');
+    img.src = 'data:image/jpeg;base64,' + p.b64;
+    img.alt = 'Page ' + (i + 1);
+    img.loading = 'lazy';
+    img.addEventListener('click', () => openViewer(p));
+    const badge = document.createElement('span');
+    badge.className = 'badge';
+    badge.textContent = i + 1;
+    const x = document.createElement('button');
+    x.className = 'x';
+    x.textContent = '✕';
+    x.setAttribute('aria-label', 'Delete page ' + (i + 1));
+    x.addEventListener('click', ev => {
+      ev.stopPropagation();
+      removePage(p);
+    });
+    d.append(img, badge, x);
+    frag.appendChild(d);
+  });
+  els.grid.replaceChildren(frag);
+}
+
+function renderCamThumbs() {
+  const frag = document.createDocumentFragment();
+  state.pages.slice(-12).forEach(p => {
+    const img = document.createElement('img');
+    img.src = 'data:image/jpeg;base64,' + p.b64;
+    img.alt = '';
+    frag.appendChild(img);
+  });
+  els.thumbs.replaceChildren(frag);
+  els.thumbs.scrollLeft = els.thumbs.scrollWidth;
+}
+
+function removePage(p) {
+  state.pages = state.pages.filter(x => x.id !== p.id);
+  DB.del(p.id);
+  render(); renderCamThumbs();
+  toast('Page deleted');
+}
+
+function openViewer(p) {
+  state.viewing = p;
+  els.viewerImg.src = 'data:image/jpeg;base64,' + p.b64;
+  els.viewer.classList.remove('hidden');
+}
+function closeViewer() { els.viewer.classList.add('hidden'); state.viewing = null; }
+
+/* ------------------------------- camera ------------------------------- */
+function requestStream() {
+  return navigator.mediaDevices.getUserMedia({
+    audio: false,
+    video: { facingMode: { ideal: 'environment' }, width: { ideal: 2560 }, height: { ideal: 1440 } }
+  }).catch(() => navigator.mediaDevices.getUserMedia({ audio: false, video: true }));
+}
+
+/** Some browsers leave getUserMedia pending for ever (unanswered permission prompt).
+    Never strand the user on "Starting camera…". */
+function withTimeout(promise, ms) {
+  let settled = false;
+  return Promise.race([
+    promise.then(v => { settled = true; return v; }),
+    new Promise((_, rej) => setTimeout(() => {
+      if (!settled) rej(Object.assign(new Error('Camera timeout'), { name: 'TimeoutError' }));
+    }, ms))
+  ]).catch(err => {
+    if (err && err.name === 'TimeoutError') {
+      promise.then(s => { try { s.getTracks().forEach(t => t.stop()); } catch (e) {} }).catch(() => {});
+    }
+    throw err;
+  });
+}
+
+async function startCamera() {
+  hideCamErr();
+  showScreen('camera');
+  els.camStatus.textContent = 'Starting camera…';
+  els.autoBar.style.width = '0%';
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showCamErr('Camera access is not available here. This usually means the page is not on https:// (iPhone blocks the camera on plain http).');
+    return;
+  }
+  const hint = setTimeout(() => {
+    if (!state.running && !els.camera.classList.contains('hidden')) {
+      els.camStatus.textContent = 'Allow camera access when your browser asks';
+    }
+  }, 2400);
+  state.camToken = (state.camToken || 0) + 1;
+  const token = state.camToken;
+
+  try {
+    const stream = await withTimeout(requestStream(), 12000);
+    // the user may have backed out while the permission prompt was open
+    if (token !== state.camToken || els.camera.classList.contains('hidden')) {
+      stream.getTracks().forEach(t => { try { t.stop(); } catch (e) {} });
+      return;
+    }
+    state.stream = stream;
+    state.track = stream.getVideoTracks()[0] || null;
+    els.video.srcObject = stream;
+    await els.video.play().catch(() => {});
+
+    state.running = true;
+    state.quad = null;
+    state.lastCaptureQuad = null;
+    state.stableMs = 0;
+    state.prevTs = 0;
+    requestAnimationFrame(tick);
+
+    // torch, if the device exposes it
+    try {
+      const caps = state.track.getCapabilities ? state.track.getCapabilities() : {};
+      els.torchBtn.classList.toggle('hidden', !caps.torch);
+    } catch (e) { els.torchBtn.classList.add('hidden'); }
+
+    // keep the screen awake while scanning
+    try {
+      if ('wakeLock' in navigator) state.wake = await navigator.wakeLock.request('screen');
+    } catch (e) {}
+
+    els.video.addEventListener('loadedmetadata', drawOverlayOnce, { once: true });
+    setTimeout(drawOverlayOnce, 250);
+  } catch (e) {
+    const denied = e && (e.name === 'NotAllowedError' || e.name === 'SecurityError');
+    showCamErr(denied
+      ? 'Camera permission was blocked. Allow camera access for this site in Settings, or use the iPhone camera app below.'
+      : e && e.name === 'TimeoutError'
+        ? 'The camera never started — your browser is probably still waiting for permission. Tap Scan again and choose Allow, or use the camera app below.'
+        : 'Could not start the camera (' + (e && e.name || 'unknown') + ').');
+  } finally {
+    clearTimeout(hint);
+  }
+}
+
+function stopCamera() {
+  state.running = false;
+  state.camToken = (state.camToken || 0) + 1;   // invalidates any in-flight getUserMedia
+  cancelAnimationFrame(state.raf);
+  if (state.stream) state.stream.getTracks().forEach(t => { try { t.stop(); } catch (e) {} });
+  state.stream = null; state.track = null;
+  els.video.srcObject = null;
+  try { state.wake && state.wake.release(); } catch (e) {}
+  state.wake = null;
+  state.quad = null;
+}
+
+function showScreen(name) {
+  els.home.classList.toggle('hidden', name !== 'home');
+  els.camera.classList.toggle('hidden', name !== 'camera');
+  if (name === 'home') { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }
+}
+
+function showCamErr(msg) {
+  els.camErrMsg.textContent = msg;
+  els.camErr.classList.remove('hidden');
+  stopCamera();
+  showScreen('home');
+}
+function hideCamErr() { els.camErr.classList.add('hidden'); }
+
+/* --------------------------- overlay drawing --------------------------- */
+function videoCoverRect() {
+  const v = els.video;
+  const cw = els.overlay.clientWidth || window.innerWidth;
+  const ch = els.overlay.clientHeight || window.innerHeight;
+  const vw = v.videoWidth || 4, vh = v.videoHeight || 3;
+  const s = Math.max(cw / vw, ch / vh);
+  return { x: (cw - vw * s) / 2, y: (ch - vh * s) / 2, w: vw * s, h: vh * s, cw, ch };
+}
+
+function paintOverlay(quad, progress) {
+  const cv = els.overlay;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const cw = cv.clientWidth || window.innerWidth;
+  const ch = cv.clientHeight || window.innerHeight;
+  if (cv.width !== Math.round(cw * dpr) || cv.height !== Math.round(ch * dpr)) {
+    cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
+  }
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cw, ch);
+
+  const r = videoCoverRect();
+  if (!quad) {
+    ctx.strokeStyle = 'rgba(255,255,255,.28)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([7, 9]);
+    const m = 26;
+    ctx.strokeRect(m + r.x * 0, m, cw - m * 2, ch - m * 2);
+    ctx.setLineDash([]);
+    return;
+  }
+
+  const pts = quad.map(p => [r.x + p[0] * r.w, r.y + p[1] * r.h]);
+
+  // dim everything except the page
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, cw, ch);
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < 4; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(3,6,11,.5)';
+  ctx.fill('evenodd');
+  ctx.restore();
+
+  const ready = progress >= 1;
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < 4; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+  ctx.closePath();
+  ctx.lineWidth = ready ? 3.5 : 2.5;
+  ctx.strokeStyle = ready ? '#ffffff' : 'rgba(255,255,255,.82)';
+  ctx.stroke();
+
+  // corner brackets
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineCap = 'round';
+  const len = 20;
+  pts.forEach((p, i) => {
+    const prev = pts[(i + 3) % 4], nxt = pts[(i + 1) % 4];
+    const v1 = [p[0] - prev[0], p[1] - prev[1]];
+    const v2 = [nxt[0] - p[0], nxt[1] - p[1]];
+    const l1 = Math.hypot(v1[0], v1[1]) || 1, l2 = Math.hypot(v2[0], v2[1]) || 1;
+    ctx.beginPath();
+    ctx.moveTo(p[0] + v1[0] / l1 * len, p[1] + v1[1] / l1 * len);
+    ctx.lineTo(p[0], p[1]);
+    ctx.lineTo(p[0] + v2[0] / l2 * len, p[1] + v2[1] / l2 * len);
+    ctx.stroke();
+  });
+  ctx.lineCap = 'butt';
+
+  if (progress > 0 && !ready) {
+    // progress ring in the middle-top of the page
+    const cx = (pts[0][0] + pts[2][0]) / 2;
+    const cy = (pts[0][1] + pts[2][1]) / 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 26, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+    ctx.strokeStyle = 'rgba(255,255,255,.85)';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+  }
+}
+
+function drawOverlayOnce() {
+  paintOverlay(state.quad, state.auto ? clamp(state.stableMs / 650, 0, 1) : 0);
+}
+
+function setStatus(text, progress) {
+  if (els.camStatus.textContent !== text) els.camStatus.textContent = text;
+  els.autoBar.style.width = (clamp(progress, 0, 1) * 100).toFixed(0) + '%';
+}
+
+/* ----------------------------- detect loop ----------------------------- */
+function maxDelta(a, b) {
+  let m = 0;
+  for (let i = 0; i < 4; i++) m = Math.max(m, dist(a[i], b[i]));
+  return m;
+}
+
+function tick(ts) {
+  if (!state.running) return;
+  state.raf = requestAnimationFrame(tick);
+  const v = els.video;
+  if (!v.videoWidth || state.busy) return;
+
+  const dt = Math.min(250, ts - (state.prevTs || ts));
+  state.prevTs = ts;
+  if (ts - state.lastDetect < 85) return;
+  state.lastDetect = ts;
+
+  const det = findQuad(v, v.videoWidth, v.videoHeight);
+
+  if (!det) {
+    state.quad = null;
+    state.stableMs = 0;
+    if (ts - (state.lastSeen || 0) > 700) state.lastCaptureQuad = null;
+    setStatus('Point the camera at a document', 0);
+    paintOverlay(null, 0);
+    return;
+  }
+  state.lastSeen = ts;
+
+  // temporal smoothing keeps the outline from jittering
+  if (!state.quad) state.quad = det.quad;
+  else state.quad = state.quad.map((p, i) => [
+    p[0] * 0.55 + det.quad[i][0] * 0.45,
+    p[1] * 0.55 + det.quad[i][1] * 0.45
+  ]);
+
+  const moved = maxDelta(det.quad, state.quad);
+  const sameAsCaptured = state.lastCaptureQuad && maxDelta(state.quad, state.lastCaptureQuad) < 0.03;
+
+  if (state.auto && !sameAsCaptured && moved < 0.028 && det.sharp > 1.5) {
+    state.stableMs += dt;
+  } else {
+    state.stableMs = 0;
+  }
+
+  const progress = clamp(state.stableMs / 650, 0, 1);
+  paintOverlay(state.quad, progress);
+
+  if (sameAsCaptured) setStatus('Captured ✓  ·  move to the next page', 0);
+  else if (!state.auto) setStatus('Tap the shutter', 0);
+  else if (progress < 1) setStatus('Hold steady…', progress);
+  else setStatus('Capturing…', 1);
+
+  if (state.auto && !sameAsCaptured && progress >= 1 && !state.busy && performance.now() > state.cooldown) {
+    state.cooldown = performance.now() + 1400;
+    capture();
+  }
+}
+
+/* ------------------------------- capture ------------------------------- */
+function grabFrame(maxSide) {
+  const v = els.video;
+  const vw = v.videoWidth, vh = v.videoHeight;
+  if (!vw || !vh) return null;
+  const s = Math.min(1, maxSide / Math.max(vw, vh));
+  const c = document.createElement('canvas');
+  c.width = Math.round(vw * s);
+  c.height = Math.round(vh * s);
+  c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+  return c;
+}
+
+const DEFAULT_QUAD = [[0.035, 0.035], [0.965, 0.035], [0.965, 0.965], [0.035, 0.965]];
+
+async function capture(manual) {
+  if (state.busy || !state.stream) return;
+  const quad = state.quad ? state.quad.map(p => [...p]) : DEFAULT_QUAD.map(p => [...p]);
+
+  state.busy = true;
+  flashScreen();
+  beep();
+  vibrate(18);
+  els.busyText.textContent = 'Cleaning up page…';
+  els.busy.classList.remove('hidden');
+  await nextFrame();
+
+  try {
+    const src = grabFrame(2400);
+    if (!src) throw new Error('no frame');
+    const warped = warpCanvas(src, quad, state.maxSide);
+    if (!warped) throw new Error('warp failed');
+    enhance(warped, state.filter);
+    const page = await commitPage(warped);
+    if (page) {
+      state.lastCaptureQuad = quad;
+      toast('Page ' + state.pages.length + ' added');
+    }
+  } catch (e) {
+    toast('Could not capture that page — try again');
+  } finally {
+    state.busy = false;
+    els.busy.classList.add('hidden');
+    state.stableMs = 0;
+  }
+}
+
+function flashScreen() {
+  els.flash.classList.remove('go');
+  void els.flash.offsetWidth;
+  els.flash.classList.add('go');
+}
+
+/* ------------------------------- PDF ------------------------------- */
+function b64ToBytes(b64) {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+function strBytes(s) {
+  const a = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) a[i] = s.charCodeAt(i) & 0xff;
+  return a;
+}
+
+/** Minimal, dependency-free PDF writer: one page per JPEG. */
+function buildPDF(pages) {
+  const chunks = [];
+  let pos = 0;
+  const push = u8 => { chunks.push(u8); pos += u8.length; };
+  const pushS = s => push(strBytes(s));
+
+  pushS('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
+
+  const n = pages.length;
+  const lastId = 3 * n + 2;                       // 1 catalog, 2 pages, then page/content/image triples
+  const offsets = new Array(lastId + 1).fill(0);
+
+  const begin = id => { offsets[id] = pos; pushS(id + ' 0 obj\n'); };
+  const end = () => pushS('endobj\n');
+
+  begin(1);
+  pushS('<< /Type /Catalog /Pages 2 0 R >>\n');
+  end();
+
+  begin(2);
+  const kids = pages.map((_, i) => (3 + 3 * i) + ' 0 R').join(' ');
+  pushS('<< /Type /Pages /Count ' + n + ' /Kids [ ' + kids + ' ] >>\n');
+  end();
+
+  pages.forEach((p, i) => {
+    const pid = 3 + 3 * i, cid = pid + 1, iid = pid + 2;
+    const pw = 595.28;                               // A4 width in points
+    const ph = pw * (p.h / p.w);
+
+    begin(pid);
+    pushS('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' +
+      pw.toFixed(2) + ' ' + ph.toFixed(2) +
+      '] /Resources << /XObject << /Im0 ' + iid + ' 0 R >> /ProcSet [/PDF /ImageC] >>' +
+      ' /Contents ' + cid + ' 0 R >>\n');
+    end();
+
+    const content = 'q\n' + pw.toFixed(2) + ' 0 0 ' + ph.toFixed(2) + ' 0 0 cm\n/Im0 Do\nQ\n';
+    begin(cid);
+    pushS('<< /Length ' + content.length + ' >>\nstream\n');
+    pushS(content);
+    pushS('endstream\n');
+    end();
+
+    const bytes = b64ToBytes(p.b64);
+    begin(iid);
+    pushS('<< /Type /XObject /Subtype /Image /Width ' + p.w + ' /Height ' + p.h +
+      ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' +
+      bytes.length + ' >>\nstream\n');
+    push(bytes);
+    pushS('\nendstream\n');
+    end();
+  });
+
+  const xrefPos = pos;
+  const entries = lastId + 1;
+  let xref = 'xref\n0 ' + entries + '\n0000000000 65535 f \n';
+  for (let id = 1; id <= lastId; id++) xref += String(offsets[id]).padStart(10, '0') + ' 00000 n \n';
+  pushS(xref);
+  pushS('trailer\n<< /Size ' + entries + ' /Root 1 0 R >>\nstartxref\n' + xrefPos + '\n%%EOF\n');
+
+  return new Blob(chunks, { type: 'application/pdf' });
+}
+
+async function exportPDF() {
+  const pages = state.pages.slice().sort((a, b) => a.seq - b.seq);
+  if (!pages.length) { toast('Scan a page first'); return; }
+
+  let blob;
+  try {
+    blob = buildPDF(pages);
+  } catch (e) {
+    toast('PDF build failed — try fewer pages');
+    return;
+  }
+
+  const d = new Date();
+  const stamp = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0') + '-' + String(d.getHours()).padStart(2, '0') +
+    String(d.getMinutes()).padStart(2, '0');
+  const name = 'scannalite-' + stamp + '.pdf';
+
+  // iPhone/iPad/Android: straight into the share sheet (AirDrop / Files / Mail / Messages).
+  // Desktop: just download the file — it's less clicks than an OS share dialog.
+  const ua = navigator.userAgent;
+  const mobileLike = /iPhone|iPad|iPod|Android/i.test(ua) || (navigator.maxTouchPoints > 1 && /Mac/.test(ua));
+  try {
+    const file = new File([blob], name, { type: 'application/pdf' });
+    if (mobileLike && navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'Scanned document' });
+      toast('PDF shared');
+      return;
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') return;   // user backed out
+  }
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  toast('PDF saved — check Files / Downloads', 3200);
+}
+
+/* ---------------------------- photo import ---------------------------- */
+function loadImage(file) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { res({ img, url }); };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('image load failed')); };
+    img.src = url;
+  });
+}
+
+async function addImageFile(file) {
+  const { img, url } = await loadImage(file);
+  try {
+    // <img> respects EXIF orientation, so iPhone photos are upright here
+    const iw = img.naturalWidth, ih = img.naturalHeight;
+    const s = Math.min(1, 2400 / Math.max(iw, ih));
+    const src = document.createElement('canvas');
+    src.width = Math.round(iw * s); src.height = Math.round(ih * s);
+    src.getContext('2d').drawImage(img, 0, 0, src.width, src.height);
+
+    const det = findQuad(src, src.width, src.height);
+    const quad = det ? det.quad : DEFAULT_QUAD;
+    const warped = warpCanvas(src, quad, state.maxSide) || src;
+    if (warped !== src) enhance(warped, state.filter);
+    return await commitPage(warped);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function importFiles(files) {
+  const list = Array.from(files || []).filter(f => f.type.startsWith('image/'));
+  if (!list.length) return;
+  els.busyText.textContent = list.length > 1 ? 'Processing ' + list.length + ' photos…' : 'Processing photo…';
+  els.busy.classList.remove('hidden');
+  let added = 0;
+  for (const f of list) {
+    try { if (await addImageFile(f)) added++; } catch (e) {}
+  }
+  els.busy.classList.add('hidden');
+  if (added) toast(added + (added === 1 ? ' page added' : ' pages added'));
+  else toast('No document found in those photos');
+}
+
+/* ------------------------------- wiring ------------------------------- */
+function setFilter(mode) {
+  state.filter = mode;
+  document.querySelectorAll('.chip[data-filter]').forEach(c =>
+    c.classList.toggle('active', c.dataset.filter === mode));
+}
+
+els.scanBtn.addEventListener('click', () => startCamera());
+els.closeCam.addEventListener('click', () => { stopCamera(); showScreen('home'); });
+
+els.shutter.addEventListener('click', () => capture(true));
+
+els.autoBtn.addEventListener('click', () => {
+  state.auto = !state.auto;
+  els.autoBtn.classList.toggle('on', state.auto);
+  els.autoBtn.textContent = state.auto ? 'AUTO' : 'MAN';
+  state.stableMs = 0;
+  if (!state.auto) setStatus('Auto off — tap the shutter', 0);
+});
+
+els.doneBtn.addEventListener('click', () => {
+  const n = state.pages.length;
+  stopCamera();
+  showScreen('home');
+  if (!n) return;
+  exportPDF();     // stays inside the tap gesture so iOS allows the share sheet
+});
+
+els.pdfBtn.addEventListener('click', () => exportPDF());
+
+els.clearBtn.addEventListener('click', async () => {
+  if (!state.pages.length) return;
+  if (!confirm('Delete all ' + state.pages.length + ' scanned pages?')) return;
+  state.pages = [];
+  state.seq = 0;
+  await DB.clear();
+  render(); renderCamThumbs();
+  toast('All pages cleared');
+});
+
+els.photosBtn.addEventListener('click', () => els.fileInput.click());
+els.errUseCamera.addEventListener('click', () => els.cameraInput.click());
+els.errUsePhotos.addEventListener('click', () => { hideCamErr(); els.fileInput.click(); });
+els.errClose.addEventListener('click', () => { hideCamErr(); showScreen('home'); });
+
+els.fileInput.addEventListener('change', e => {
+  importFiles(e.target.files);
+  e.target.value = '';
+});
+els.cameraInput.addEventListener('change', e => {
+  hideCamErr();
+  importFiles(e.target.files);
+  e.target.value = '';
+});
+
+document.querySelectorAll('.chip[data-filter]').forEach(c =>
+  c.addEventListener('click', () => setFilter(c.dataset.filter)));
+
+els.helpBtn.addEventListener('click', () => {
+  toast('Scan → hold steady → auto-capture → Done makes the PDF', 3600);
+});
+
+els.viewerClose.addEventListener('click', closeViewer);
+els.viewerDel.addEventListener('click', () => {
+  if (state.viewing) removePage(state.viewing);
+  closeViewer();
+});
+
+// keep the video/overlay lined up when the phone rotates
+window.addEventListener('resize', () => { if (state.running) drawOverlayOnce(); });
+window.addEventListener('orientationchange', () => setTimeout(drawOverlayOnce, 350));
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && state.running) { stopCamera(); showScreen('home'); }
+});
+
+// back button / swipe-back closes the camera instead of leaving the app
+history.replaceState({ docscan: 1 }, '');
+window.addEventListener('popstate', () => {
+  if (!els.camera.classList.contains('hidden')) {
+    stopCamera(); showScreen('home');
+    history.pushState({ docscan: 1 }, '');
+  }
+});
+
+els.torchBtn.addEventListener('click', async () => {
+  if (!state.track) return;
+  try {
+    state.torchOn = !state.torchOn;
+    await state.track.applyConstraints({ advanced: [{ torch: state.torchOn }] });
+  } catch (e) { toast('Light not supported on this camera'); }
+});
+
+/* ------------------------------- boot ------------------------------- */
+async function boot() {
+  const saved = await DB.all();
+  saved.sort((a, b) => a.seq - b.seq);
+  state.pages = saved;
+  state.seq = saved.reduce((m, p) => Math.max(m, p.seq || 0), 0);
+  render();
+  renderCamThumbs();
+  setFilter(state.filter);
+
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+}
+
+// exposed for debugging / automated checks
+window.ScannaLite = { state, buildPDF, findQuad, warpCanvas, enhance, commitPage, addImageFile, exportPDF };
+
+boot();
+})();
+</script>
+</body>
+</html>
