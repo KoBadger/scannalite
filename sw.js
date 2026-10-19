@@ -1,5 +1,5 @@
 /* ScannaLite offline shell — version bump forces a refresh */
-const CACHE = 'scannalite-v1';
+const CACHE = 'scannalite-v2';
 const ASSETS = [
   './',
   './index.html',
